@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,7 +7,7 @@ import VideoUploader from '../components/VideoUploader';
 import MultipleImageUploader from '../components/MultipleImageUploader';
 import ProcessingStatus from '../components/ProcessingStatus';
 import VideoPlayer from '../components/VideoPlayer';
-import { processVideo, processImagesToVideo } from '../services/apiService';
+import { processVideo, processImagesToVideo, checkApiHealth } from '../services/apiService';
 import { toast } from '@/hooks/use-toast';
 import { useToast } from '@/hooks/use-toast';
 
@@ -20,8 +19,24 @@ const FrameInterpolation = () => {
   const [processingProgress, setProcessingProgress] = useState(0);
   const [activeTab, setActiveTab] = useState("interpolation");
   const [speedFactor, setSpeedFactor] = useState(1.0);
+  const [apiConnected, setApiConnected] = useState(true);
   
-  // Reset state when tab changes
+  useEffect(() => {
+    const checkConnection = async () => {
+      const isConnected = await checkApiHealth();
+      setApiConnected(isConnected);
+      if (!isConnected) {
+        toast({
+          variant: "destructive",
+          title: "API Connection Issue",
+          description: "Unable to connect to the processing server. Demo mode enabled."
+        });
+      }
+    };
+    
+    checkConnection();
+  }, []);
+  
   useEffect(() => {
     setSelectedVideoFile(null);
     setSelectedImageFiles([]);
@@ -30,7 +45,6 @@ const FrameInterpolation = () => {
     setProcessingProgress(0);
   }, [activeTab]);
   
-  // Simulate progress updates during processing
   useEffect(() => {
     if (isProcessing) {
       const timer = setInterval(() => {
@@ -159,13 +173,21 @@ const FrameInterpolation = () => {
       });
     }
   };
+
+  const DemoModeWarning = () => !apiConnected && (
+    <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-md">
+      <p className="text-sm text-amber-800 dark:text-amber-200">
+        <span className="font-medium">Demo Mode:</span> The backend server is not connected. Showing mock results for demonstration purposes.
+      </p>
+    </div>
+  );
   
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen flex flex-col bg-background dark:bg-background">
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center text-gray-500 hover:text-gray-700">
+            <Link to="/" className="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
               <ArrowLeft className="w-5 h-5 mr-2" />
               Back to Features
             </Link>
@@ -175,10 +197,12 @@ const FrameInterpolation = () => {
       
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-2">Frame Interpolation</h1>
-          <p className="text-gray-600 mb-6">
+          <h1 className="text-3xl font-bold mb-2 text-foreground">Frame Interpolation</h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
             Enhance video smoothness, create videos from images, or adjust playback speed.
           </p>
+          
+          <DemoModeWarning />
           
           <Tabs defaultValue="interpolation" className="mb-8" onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-3 mb-6">
@@ -189,9 +213,9 @@ const FrameInterpolation = () => {
             
             <TabsContent value="interpolation">
               <div className="space-y-6">
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                  <h2 className="text-xl font-semibold mb-4">Video Smoothening</h2>
-                  <p className="text-gray-600 mb-6">
+                <div className="bg-white dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
+                  <h2 className="text-xl font-semibold mb-4 text-foreground">Video Smoothening</h2>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">
                     Enhance the fluidity of videos by generating intermediate frames, making the motion appear smoother.
                   </p>
                   
@@ -216,8 +240,8 @@ const FrameInterpolation = () => {
                 )}
                 
                 {processedVideoUrl && (
-                  <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <h2 className="text-xl font-semibold mb-4">Processed Video</h2>
+                  <div className="bg-white dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
+                    <h2 className="text-xl font-semibold mb-4 text-foreground">Processed Video</h2>
                     <VideoPlayer 
                       src={processedVideoUrl} 
                       title="Smoothened Video"
@@ -237,9 +261,9 @@ const FrameInterpolation = () => {
             
             <TabsContent value="images">
               <div className="space-y-6">
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                  <h2 className="text-xl font-semibold mb-4">Images to Video Conversion</h2>
-                  <p className="text-gray-600 mb-6">
+                <div className="bg-white dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
+                  <h2 className="text-xl font-semibold mb-4 text-foreground">Images to Video Conversion</h2>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">
                     Convert a series of images into a cohesive video, perfect for creating time-lapses or stop-motion animations.
                   </p>
                   
@@ -264,8 +288,8 @@ const FrameInterpolation = () => {
                 )}
                 
                 {processedVideoUrl && (
-                  <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <h2 className="text-xl font-semibold mb-4">Generated Video</h2>
+                  <div className="bg-white dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
+                    <h2 className="text-xl font-semibold mb-4 text-foreground">Generated Video</h2>
                     <VideoPlayer 
                       src={processedVideoUrl} 
                       title="Generated Video from Images"
@@ -285,9 +309,9 @@ const FrameInterpolation = () => {
             
             <TabsContent value="speed">
               <div className="space-y-6">
-                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                  <h2 className="text-xl font-semibold mb-4">Speed Conversion</h2>
-                  <p className="text-gray-600 mb-6">
+                <div className="bg-white dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
+                  <h2 className="text-xl font-semibold mb-4 text-foreground">Speed Conversion</h2>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">
                     Adjust the speed of your videos, creating slow-motion or fast-motion effects.
                   </p>
                   
@@ -336,8 +360,8 @@ const FrameInterpolation = () => {
                 )}
                 
                 {processedVideoUrl && (
-                  <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <h2 className="text-xl font-semibold mb-4">Processed Video</h2>
+                  <div className="bg-white dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
+                    <h2 className="text-xl font-semibold mb-4 text-foreground">Processed Video</h2>
                     <VideoPlayer 
                       src={processedVideoUrl} 
                       title={`${speedFactor}x Speed Video`}
