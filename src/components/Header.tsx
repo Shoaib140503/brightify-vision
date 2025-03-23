@@ -6,7 +6,7 @@ import { useTheme } from "next-themes";
 
 const Header = () => {
   const [scrolled, setScrolled] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   
   // After mounting, we can access the theme
@@ -29,7 +29,7 @@ const Header = () => {
   }, [scrolled]);
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
   return (
@@ -65,8 +65,8 @@ const Header = () => {
               aria-label="Toggle theme"
               onClick={toggleTheme}
             >
-              {mounted && theme === "dark" ? (
-                <Sun className="h-[1.2rem] w-[1.2rem] text-gray-400" />
+              {mounted && resolvedTheme === "dark" ? (
+                <Sun className="h-[1.2rem] w-[1.2rem] text-yellow-400" />
               ) : (
                 <Moon className="h-[1.2rem] w-[1.2rem] text-gray-600" />
               )}
