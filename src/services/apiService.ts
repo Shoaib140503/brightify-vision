@@ -8,11 +8,51 @@ type ProcessResult = {
   result?: DeepfakeResult;
 };
 
+type ImageProcessResult = {
+  success: boolean;
+  processedImageUrl?: string;
+  error?: string;
+};
+
 type DeepfakeResult = {
   is_fake: boolean;
   fake_probability: number;
   total_frames: number;
   fake_frames: number;
+};
+
+export const processImage = async (imageFile: File): Promise<ImageProcessResult> => {
+  // Create FormData to send the file
+  const formData = new FormData();
+  formData.append('image', imageFile);
+
+  try {
+    // Send the request to the API
+    const response = await fetch('http://localhost:5000/api/process-image', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to process image');
+    }
+    
+    const data = await response.json();
+    
+    return {
+      success: data.success,
+      processedImageUrl: data.processedImagePath 
+        ? `http://localhost:5000/api/download/${encodeURIComponent(data.processedImagePath)}`
+        : undefined
+    };
+  } catch (error) {
+    console.error("Error processing image:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to process image. Please try again later."
+    };
+  }
 };
 
 export const processVideo = async (

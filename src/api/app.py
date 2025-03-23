@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import os
@@ -251,6 +250,23 @@ def process_video_low_light(video_path):
     output_path = os.path.join(app.config['PROCESSED_FOLDER'], f"low_light_{os.path.basename(video_path)}")
     return frames_to_video(enhanced_frames, output_path, fps)
 
+# New function to process a single image for low light enhancement
+def process_image_low_light(image_path):
+    """Process a single image for low light enhancement."""
+    # Read the image
+    img = cv2.imread(image_path)
+    if img is None:
+        return None, "Failed to read image"
+    
+    # Apply low light enhancement
+    enhanced_img = enhance_frame_low_light(img)
+    
+    # Save the enhanced image
+    output_path = os.path.join(app.config['PROCESSED_FOLDER'], f"enhanced_{os.path.basename(image_path)}")
+    cv2.imwrite(output_path, enhanced_img)
+    
+    return output_path, None
+
 # Feature 3: Deepfake Detection (AMTENnet)
 def detect_deepfake(video_path, model=None):
     """Detect if a video is deepfake using AMTENnet model."""
@@ -340,6 +356,36 @@ def process_video_rlgan(video_path, model=None):
     return frames_to_video(enhanced_frames, output_path, fps)
 
 # API Endpoints
+@app.route('/api/process-image', methods=['POST'])
+def api_process_image():
+    if 'image' not in request.files:
+        return jsonify({'success': False, 'error': 'No image file in the request'}), 400
+    
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No selected file'}), 400
+    
+    try:
+        # Save uploaded file
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        # Process the image
+        processed_path, error = process_image_low_light(filepath)
+        
+        if error:
+            return jsonify({'success': False, 'error': error}), 500
+        
+        # Return the processed image path for download
+        return jsonify({
+            'success': True,
+            'processedImagePath': processed_path
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/process-video', methods=['POST'])
 def api_process_video():
     if 'video' not in request.files:
