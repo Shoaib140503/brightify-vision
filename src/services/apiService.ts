@@ -1,90 +1,123 @@
 
-// This file would typically interact with your Flask backend
+// API Service for handling video processing requests
 
-type ImageProcessResult = {
+type ProcessResult = {
   success: boolean;
-  processedImageUrl?: string;
+  processedVideoUrl?: string;
   error?: string;
+  result?: DeepfakeResult;
 };
 
-export const processImage = async (imageFile: File): Promise<ImageProcessResult> => {
+type DeepfakeResult = {
+  is_fake: boolean;
+  fake_probability: number;
+  total_frames: number;
+  fake_frames: number;
+};
+
+export const processVideo = async (
+  videoFile: File, 
+  feature: string, 
+  options: {
+    subFeature?: string;
+    speedFactor?: number;
+  } = {}
+): Promise<ProcessResult> => {
   // Create FormData to send the file
   const formData = new FormData();
-  formData.append('image', imageFile);
+  formData.append('video', videoFile);
+  formData.append('feature', feature);
+  
+  if (options.subFeature) {
+    formData.append('subFeature', options.subFeature);
+  }
+  
+  if (options.speedFactor) {
+    formData.append('speedFactor', options.speedFactor.toString());
+  }
 
   try {
-    // In a real implementation, this would call your Flask API:
-    // const response = await fetch('http://localhost:5000/api/process-image', {
-    //   method: 'POST',
-    //   body: formData,
-    // });
+    // Send the request to the API
+    const response = await fetch('http://localhost:5000/api/process-video', {
+      method: 'POST',
+      body: formData,
+    });
     
-    // For demo purposes, we're simulating a response
-    // This would be replaced with actual API calls in production
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to process video');
+    }
     
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const data = await response.json();
     
-    // Create a fake "processed" image by creating a canvas and modifying the image
-    const processedImageUrl = await simulateImageProcessing(imageFile);
-    
-    return {
-      success: true,
-      processedImageUrl,
-    };
+    if (feature === 'deepfake') {
+      return {
+        success: data.success,
+        result: data.result
+      };
+    } else {
+      return {
+        success: data.success,
+        processedVideoUrl: data.processedVideoPath 
+          ? `http://localhost:5000/api/download/${encodeURIComponent(data.processedVideoPath)}`
+          : undefined
+      };
+    }
   } catch (error) {
-    console.error("Error processing image:", error);
+    console.error("Error processing video:", error);
     return {
       success: false,
-      error: "Failed to process image. Please try again later."
+      error: error instanceof Error ? error.message : "Failed to process video. Please try again later."
     };
   }
 };
 
-// This is just for demo purposes - in production, this would be handled by the Flask backend
-const simulateImageProcessing = async (file: File): Promise<string> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) {
-        resolve(URL.createObjectURL(file)); // Fallback to original if canvas not supported
-        return;
-      }
-      
-      canvas.width = img.width;
-      canvas.height = img.height;
-      
-      // Draw the original image
-      ctx.drawImage(img, 0, 0);
-      
-      // Get the image data
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      
-      // Simple brightening algorithm (in reality, your ML model would do much more sophisticated processing)
-      for (let i = 0; i < data.length; i += 4) {
-        // Increase brightness
-        data[i] = Math.min(255, data[i] * 1.3);     // Red
-        data[i + 1] = Math.min(255, data[i + 1] * 1.3); // Green
-        data[i + 2] = Math.min(255, data[i + 2] * 1.3); // Blue
-        
-        // Increase contrast
-        for (let j = 0; j < 3; j++) {
-          const value = data[i + j];
-          data[i + j] = Math.min(255, Math.max(0, (value - 128) * 1.2 + 128));
-        }
-      }
-      
-      // Put the modified image data back
-      ctx.putImageData(imageData, 0, 0);
-      
-      // Convert to data URL
-      resolve(canvas.toDataURL('image/jpeg', 0.95));
-    };
-    
-    img.src = URL.createObjectURL(file);
+export const processImagesToVideo = async (imageFiles: File[], fps: number = 30): Promise<ProcessResult> => {
+  // Create FormData to send the files
+  const formData = new FormData();
+  
+  // Append all image files
+  imageFiles.forEach(file => {
+    formData.append('images', file);
   });
+  
+  formData.append('fps', fps.toString());
+
+  try {
+    // Send the request to the API
+    const response = await fetch('http://localhost:5000/api/image-to-video', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to process images to video');
+    }
+    
+    const data = await response.json();
+    
+    return {
+      success: data.success,
+      processedVideoUrl: data.processedVideoPath 
+        ? `http://localhost:5000/api/download/${encodeURIComponent(data.processedVideoPath)}`
+        : undefined
+    };
+  } catch (error) {
+    console.error("Error processing images to video:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create video from images. Please try again later."
+    };
+  }
+};
+
+export const checkApiHealth = async (): Promise<boolean> => {
+  try {
+    const response = await fetch('http://localhost:5000/api/health');
+    return response.ok;
+  } catch (error) {
+    console.error("API health check failed:", error);
+    return false;
+  }
 };
